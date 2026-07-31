@@ -1579,9 +1579,13 @@ function editTrade(id) {
   document.getElementById('btn-partial').textContent='⚡ UPDATE AS OPEN TRADE';
   document.getElementById('btn-cancel-edit').style.display='block';
 
-  // Scroll to top and switch to log tab
+  // Switch to log tab and scroll to top
   showTab('log', null);
-  window.scrollTo({top:0,behavior:'smooth'});
+  setTimeout(() => {
+    const content = document.getElementById('app-content');
+    if (content) content.scrollTop = 0;
+    window.scrollTo(0, 0);
+  }, 150);
 }
 
 function cancelEdit(){
