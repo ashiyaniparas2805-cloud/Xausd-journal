@@ -1355,33 +1355,27 @@ function getChecked(ids, otherType){
 async function saveTrade(asOpen) {
   showToast('Saving…');
 
-  // Collect voice blobs → base64 (stored in IDB, not LS)
+  // Collect voice blobs → base64
   const voiceNotes = {};
   for (const stage of Object.keys(currentClips)) {
     voiceNotes[stage] = [];
     for (const clip of currentClips[stage]) {
       const b64 = await blobToBase64(clip.blob);
-      voiceNotes[stage].push({ duration: clip.duration, idbKey: null, data: b64 });
+      voiceNotes[stage].push({ duration: clip.duration, data: b64 });
     }
   }
 
   const tradeId = editingId !== null ? editingId : Date.now();
   const mediaKey = `trade_${tradeId}`;
 
-  // Save all media to IndexedDB
+  // Try to save media to IndexedDB — but don't block trade save if it fails
   const mediaObj = {
     screenshots: currentScreenshots.map(s=>({data:s.data,label:s.label})),
     stageScreenshots: getStageScreenshotsForSave(),
     tfScreenshots: getTfScreenshotsForSave(),
     voiceNotes
   };
-
-  try {
-    await idbSet(mediaKey, mediaObj);
-  } catch(e) {
-    showToast('Media save failed — try again');
-    return;
-  }
+  try { await idbSet(mediaKey, mediaObj); } catch(e) { console.warn('IDB save failed, continuing:', e); }
 
   if (editingId !== null) {
     const idx = trades.findIndex(t=>t.id===editingId);
