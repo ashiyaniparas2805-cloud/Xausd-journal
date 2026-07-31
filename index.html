@@ -1355,114 +1355,136 @@ function getChecked(ids, otherType){
 async function saveTrade(asOpen) {
   showToast('Saving…');
 
-  // Collect voice blobs → base64
-  const voiceNotes = {};
-  for (const stage of Object.keys(currentClips)) {
-    voiceNotes[stage] = [];
-    for (const clip of currentClips[stage]) {
-      const b64 = await blobToBase64(clip.blob);
-      voiceNotes[stage].push({ duration: clip.duration, data: b64 });
-    }
-  }
+  // Validation first
+  const dateVal = document.getElementById('trade-date').value;
+  const dirVal = selectedDir;
+  const entryVal = document.getElementById('entry-price').value;
 
-  const tradeId = editingId !== null ? editingId : Date.now();
-  const mediaKey = `trade_${tradeId}`;
-
-  // Try to save media to IndexedDB — but don't block trade save if it fails
-  const mediaObj = {
-    screenshots: currentScreenshots.map(s=>({data:s.data,label:s.label})),
-    stageScreenshots: getStageScreenshotsForSave(),
-    tfScreenshots: getTfScreenshotsForSave(),
-    voiceNotes
-  };
-  try { await idbSet(mediaKey, mediaObj); } catch(e) { console.warn('IDB save failed, continuing:', e); }
-
-  if (editingId !== null) {
-    const idx = trades.findIndex(t=>t.id===editingId);
-    if (idx === -1) { showToast('Trade not found'); return; }
-    const existing = trades[idx];
-    trades[idx] = {
-      ...existing,
-      date:document.getElementById('trade-date').value,
-      time:document.getElementById('trade-time').value,
-      session:document.getElementById('trade-session').value,
-      direction:selectedDir||existing.direction,
-      entryPrice:document.getElementById('entry-price').value||existing.entryPrice,
-      stopLoss:document.getElementById('stop-loss').value||existing.stopLoss,
-      takeProfit:document.getElementById('take-profit').value||existing.takeProfit,
-      lotSize:document.getElementById('lot-size').value||existing.lotSize,
-      rrRatio:document.getElementById('rr-ratio').value||existing.rrRatio,
-      technicalBasis:getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech').length?getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech'):existing.technicalBasis,
-      marketBias:getMarketBias()||existing.marketBias,
-      setupNotes:document.getElementById('setup-notes').value||existing.setupNotes,
-      preEmotion:selectedPreEmo||existing.preEmotion,
-      confidence:document.getElementById('confidence-slider').value,
-      preNote:document.getElementById('pre-note').value||existing.preNote,
-      result:asOpen?'OPEN':(selectedResult||existing.result),
-      exitPrice:document.getElementById('exit-price').value||existing.exitPrice,
-      pnl:document.getElementById('pnl').value||existing.pnl,
-      postEmotion:selectedPostEmo||existing.postEmotion,
-      execQuality:document.getElementById('exec-slider').value,
-      postNote:document.getElementById('post-note').value||existing.postNote,
-      ruleViolations:getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv').length?getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv'):existing.ruleViolations,
-      status:asOpen?'OPEN':'COMPLETE',
-      mediaKey
-    };
-    try {
-      localStorage.setItem('xauusd_journal', JSON.stringify(trades));
-      updateStorageBar();
-      showToast(asOpen?'Saved as Open Trade ✓':'Trade updated ✓');
-      cancelEdit();
-    } catch(e) {
-      showToast('Text save failed — localStorage full. Try clearing old trades.');
-    }
-    return;
-  }
-
-  // NEW TRADE — text only in localStorage
-  const trade = {
-    id: tradeId,
-    date:document.getElementById('trade-date').value,
-    time:document.getElementById('trade-time').value,
-    session:document.getElementById('trade-session').value,
-    direction:selectedDir,
-    entryPrice:document.getElementById('entry-price').value,
-    stopLoss:document.getElementById('stop-loss').value,
-    takeProfit:document.getElementById('take-profit').value,
-    lotSize:document.getElementById('lot-size').value,
-    rrRatio:document.getElementById('rr-ratio').value,
-    technicalBasis:getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech'),
-    marketBias:getMarketBias(),
-    setupNotes:document.getElementById('setup-notes').value,
-    preEmotion:selectedPreEmo,
-    confidence:document.getElementById('confidence-slider').value,
-    preNote:document.getElementById('pre-note').value,
-    result:asOpen?'OPEN':selectedResult,
-    exitPrice:document.getElementById('exit-price').value,
-    pnl:document.getElementById('pnl').value,
-    postEmotion:selectedPostEmo,
-    execQuality:document.getElementById('exec-slider').value,
-    postNote:document.getElementById('post-note').value,
-    ruleViolations:getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv'),
-    status:asOpen?'OPEN':'COMPLETE',
-    mediaKey
-  };
-
-  if (!trade.date || !trade.direction || !trade.entryPrice) {
+  if (!editingId && (!dateVal || !dirVal || !entryVal)) {
     showToast('Fill Date, Direction & Entry Price');
     return;
   }
 
-  trades.unshift(trade);
+  const tradeId = editingId !== null ? editingId : Date.now();
+
+  // Build text-only trade object (NO images, NO audio inline)
+  const tradeData = {
+    id: tradeId,
+    date: dateVal,
+    time: document.getElementById('trade-time').value,
+    session: document.getElementById('trade-session').value,
+    direction: dirVal,
+    entryPrice: document.getElementById('entry-price').value,
+    stopLoss: document.getElementById('stop-loss').value,
+    takeProfit: document.getElementById('take-profit').value,
+    lotSize: document.getElementById('lot-size').value,
+    rrRatio: document.getElementById('rr-ratio').value,
+    technicalBasis: getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech'),
+    marketBias: getMarketBias(),
+    setupNotes: document.getElementById('setup-notes').value,
+    preEmotion: selectedPreEmo,
+    confidence: document.getElementById('confidence-slider').value,
+    preNote: document.getElementById('pre-note').value,
+    result: asOpen ? 'OPEN' : selectedResult,
+    exitPrice: document.getElementById('exit-price').value,
+    pnl: document.getElementById('pnl').value,
+    postEmotion: selectedPostEmo,
+    execQuality: document.getElementById('exec-slider').value,
+    postNote: document.getElementById('post-note').value,
+    ruleViolations: getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv'),
+    status: asOpen ? 'OPEN' : 'COMPLETE',
+    hasMedia: false
+  };
+
+  // Save text data to localStorage FIRST
+  if (editingId !== null) {
+    const idx = trades.findIndex(t => t.id === editingId);
+    if (idx !== -1) {
+      const existing = trades[idx];
+      trades[idx] = {
+        ...existing,
+        ...tradeData,
+        // Keep existing values if new ones are empty
+        direction: dirVal || existing.direction,
+        entryPrice: document.getElementById('entry-price').value || existing.entryPrice,
+        stopLoss: document.getElementById('stop-loss').value || existing.stopLoss,
+        takeProfit: document.getElementById('take-profit').value || existing.takeProfit,
+        technicalBasis: getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech').length ? getChecked(['cb1','cb2','cb3','cb4','cb5','cb6','cb7','cb8'],'tech') : existing.technicalBasis,
+        marketBias: getMarketBias() || existing.marketBias,
+        setupNotes: document.getElementById('setup-notes').value || existing.setupNotes,
+        preEmotion: selectedPreEmo || existing.preEmotion,
+        preNote: document.getElementById('pre-note').value || existing.preNote,
+        exitPrice: document.getElementById('exit-price').value || existing.exitPrice,
+        pnl: document.getElementById('pnl').value || existing.pnl,
+        postEmotion: selectedPostEmo || existing.postEmotion,
+        postNote: document.getElementById('post-note').value || existing.postNote,
+        ruleViolations: getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv').length ? getChecked(['rv1','rv2','rv3','rv4','rv5','rv6'],'rv') : existing.ruleViolations,
+        hasMedia: existing.hasMedia || false
+      };
+    }
+  } else {
+    trades.unshift(tradeData);
+  }
+
+  // Save to localStorage
   try {
     localStorage.setItem('xauusd_journal', JSON.stringify(trades));
     updateStorageBar();
-    showToast(asOpen?'Saved as Open Trade ✓':'Trade saved ✓');
-    resetForm();
   } catch(e) {
-    trades.shift();
-    showToast('Save failed — please delete some old trades to free space');
+    // localStorage full — remove oldest trades until it fits
+    while (trades.length > 1) {
+      trades.pop();
+      try {
+        localStorage.setItem('xauusd_journal', JSON.stringify(trades));
+        break;
+      } catch(e2) { continue; }
+    }
+    showToast('Old trades removed to free space — trade saved ✓');
   }
+
+  // NOW save media to IndexedDB separately (non-blocking)
+  const hasAnyMedia = currentScreenshots.length > 0 ||
+    Object.values(stageScreenshots).some(s => s) ||
+    Object.values(tfScreenshots).some(tf => tf.entry || tf.exit) ||
+    Object.values(currentClips).some(c => c.length > 0);
+
+  if (hasAnyMedia) {
+    try {
+      const voiceNotes = {};
+      for (const stage of Object.keys(currentClips)) {
+        voiceNotes[stage] = [];
+        for (const clip of currentClips[stage]) {
+          const b64 = await blobToBase64(clip.blob);
+          voiceNotes[stage].push({ duration: clip.duration, data: b64 });
+        }
+      }
+      const mediaObj = {
+        screenshots: currentScreenshots.map(s=>({data:s.data,label:s.label})),
+        stageScreenshots: getStageScreenshotsForSave(),
+        tfScreenshots: getTfScreenshotsForSave(),
+        voiceNotes
+      };
+      await idbSet(`trade_${tradeId}`, mediaObj);
+      // Mark trade as having media
+      const idx = trades.findIndex(t => t.id === tradeId);
+      if (idx !== -1) {
+        trades[idx].hasMedia = true;
+        localStorage.setItem('xauusd_journal', JSON.stringify(trades));
+      }
+    } catch(e) {
+      console.warn('Media save to IDB failed:', e);
+      // Media didn't save but text data is safe
+    }
+  }
+
+  if (editingId !== null) {
+    showToast(asOpen ? 'Updated as Open Trade ✓' : 'Trade updated ✓');
+    cancelEdit();
+  } else {
+    showToast(asOpen ? 'Saved as Open Trade ✓' : 'Trade saved ✓');
+    resetForm();
+  }
+  updateOpenPill();
 }
 
 // ══════════ EDIT TRADE ══════════
@@ -1549,7 +1571,7 @@ function editTrade(id) {
   resetStageScreenshots();
   currentClips = {setup:[],pre:[],post:[]};
 
-  idbGet(t.mediaKey || `trade_${t.id}`).then(media => {
+  idbGet(`trade_${t.id}`).then(media => {
     const m = media || { screenshots:t.screenshots||[], stageScreenshots:t.stageScreenshots||{}, tfScreenshots:t.tfScreenshots||{}, voiceNotes:t.voiceNotes||{} };
     currentScreenshots = (m.screenshots||[]).map(s=>({data:s.data,label:s.label}));
     renderScreenshots();
@@ -1698,7 +1720,7 @@ async function renderEntries(){
 
   // Load each trade's media from IDB asynchronously
   for (const t of filtered) {
-    const media = await idbGet(t.mediaKey || `trade_${t.id}`);
+    const media = await idbGet(`trade_${t.id}`);
     const m = media || { screenshots:t.screenshots||[], stageScreenshots:t.stageScreenshots||{}, tfScreenshots:t.tfScreenshots||{}, voiceNotes:t.voiceNotes||{} };
     const el = document.getElementById(`media-${t.id}`);
     if (!el) continue;
