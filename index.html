@@ -178,8 +178,8 @@
   .entry-voice-label{font-size:9px;letter-spacing:1px;color:var(--gold-dim);text-transform:uppercase;min-width:68px;}
   .entry-voice-row audio{flex:1;height:24px;}
   .card-actions{display:flex;gap:6px;align-items:center;}
-  .edit-btn{background:none;border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:11px;padding:4px 10px;border-radius:4px;font-family:'Georgia',serif;transition:all 0.2s;letter-spacing:1px;}
-  .edit-btn:hover{border-color:var(--gold-dim);color:var(--gold);}
+  .edit-btn{background:var(--surface2);border:1px solid var(--gold-dim);color:var(--gold);cursor:pointer;font-size:12px;padding:10px 16px;border-radius:6px;font-family:'Georgia',serif;transition:all 0.2s;letter-spacing:1px;min-height:44px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;}
+  .edit-btn:hover{background:var(--gold-dim);color:#000;}
   .delete-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:2px 5px;border-radius:4px;transition:color 0.2s;}
   .delete-btn:hover{color:var(--red);}
 
@@ -1650,12 +1650,12 @@ async function renderEntries(){
   if(openTrades.length){
     openSec.classList.add('show');
     openList.innerHTML=openTrades.map(t=>`
-      <div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #1a1200;">
+      <div style="display:flex;align-items:center;gap:9px;padding:6px 0;border-bottom:1px solid #1a1200;">
         <span style="color:${t.direction==='BUY'?'var(--green)':'var(--red)'};font-size:11px;font-weight:bold">${t.direction||'?'}</span>
-        <span style="font-size:11px;color:var(--muted)">${t.date} · $${t.entryPrice||'?'}</span>
-        <span style="font-size:11px;color:var(--muted);flex:1">${t.session}</span>
-        <button class="edit-btn" onclick="editTrade(${t.id})">✏ EDIT</button>
-        <button class="delete-btn" onclick="deleteTrade(${t.id})">🗑</button>
+        <span style="font-size:11px;color:var(--text)">$${t.entryPrice||'?'}</span>
+        <span style="font-size:10px;color:var(--muted);flex:1">${t.date} · ${t.session}</span>
+        <button class="edit-btn" data-id="${t.id}" onclick="editTrade(${t.id});return false;">✏ EDIT</button>
+        <button class="delete-btn" onclick="deleteTrade(${t.id});return false;">🗑</button>
       </div>`).join('');
   } else openSec.classList.remove('show');
 
@@ -1676,8 +1676,8 @@ async function renderEntries(){
           </div>
         </div>
         <div class="card-actions">
-          <button class="edit-btn" onclick="editTrade(${t.id})">✏ EDIT</button>
-          <button class="delete-btn" onclick="deleteTrade(${t.id})">🗑</button>
+          <button class="edit-btn" ontouchend="editTrade(${t.id});event.preventDefault();" onclick="editTrade(${t.id})">✏ EDIT</button>
+          <button class="delete-btn" ontouchend="deleteTrade(${t.id});event.preventDefault();" onclick="deleteTrade(${t.id})">🗑</button>
         </div>
       </div>
       <div class="entry-meta">
