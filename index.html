@@ -826,19 +826,20 @@ window.addEventListener('offline', () => document.body.classList.add('offline'))
 if (!navigator.onLine) document.body.classList.add('offline');
 
 // ══════════ EVENT DELEGATION — edit & delete buttons ══════════
-// Single listener on document handles all dynamically rendered buttons
-// Much more reliable on Android than inline onclick in dynamic HTML
-document.addEventListener('click', function(e) {
-  const btn = e.target.closest('[data-action]');
-  if (!btn) return;
-  e.preventDefault();
-  e.stopPropagation();
-  const id = parseInt(btn.getAttribute('data-id'));
-  const action = btn.getAttribute('data-action');
-  if (!id || isNaN(id)) return;
-  if (action === 'edit') editTrade(id);
-  if (action === 'delete') deleteTrade(id);
-}, true); // capture phase — fires before any other handler
+// Defined here but activated inside DOMContentLoaded (see below)
+function setupButtonDelegation() {
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('[data-action]');
+    if (!btn) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const id = parseInt(btn.getAttribute('data-id'));
+    const action = btn.getAttribute('data-action');
+    if (!id || isNaN(id)) return;
+    if (action === 'edit') editTrade(id);
+    if (action === 'delete') deleteTrade(id);
+  }, true);
+}
 
 // ══════════ OVERRIDE showTab for bottom nav ══════════
 function showTab(tab, el) {
@@ -933,6 +934,7 @@ document.addEventListener('DOMContentLoaded', function() {
   updateOpenPill();
   updateStorageBar();
   openIDB();
+  setupButtonDelegation();
   renderWeekly();
 });
 
