@@ -825,6 +825,21 @@ window.addEventListener('online',  () => document.body.classList.remove('offline
 window.addEventListener('offline', () => document.body.classList.add('offline'));
 if (!navigator.onLine) document.body.classList.add('offline');
 
+// ══════════ EVENT DELEGATION — edit & delete buttons ══════════
+// Single listener on document handles all dynamically rendered buttons
+// Much more reliable on Android than inline onclick in dynamic HTML
+document.addEventListener('click', function(e) {
+  const btn = e.target.closest('[data-action]');
+  if (!btn) return;
+  e.preventDefault();
+  e.stopPropagation();
+  const id = parseInt(btn.getAttribute('data-id'));
+  const action = btn.getAttribute('data-action');
+  if (!id || isNaN(id)) return;
+  if (action === 'edit') editTrade(id);
+  if (action === 'delete') deleteTrade(id);
+}, true); // capture phase — fires before any other handler
+
 // ══════════ OVERRIDE showTab for bottom nav ══════════
 function showTab(tab, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
@@ -1670,8 +1685,8 @@ async function renderEntries(){
         <span style="color:${t.direction==='BUY'?'var(--green)':'var(--red)'};font-size:11px;font-weight:bold">${t.direction||'?'}</span>
         <span style="font-size:11px;color:var(--text)">$${t.entryPrice||'?'}</span>
         <span style="font-size:10px;color:var(--muted);flex:1">${t.date} · ${t.session}</span>
-        <button class="edit-btn" data-id="${t.id}" onclick="editTrade(${t.id});return false;">✏ EDIT</button>
-        <button class="delete-btn" onclick="deleteTrade(${t.id});return false;">🗑</button>
+        <button class="edit-btn" data-id="${t.id}" data-action="edit">✏ EDIT</button>
+        <button class="delete-btn" data-id="${t.id}" data-action="delete">🗑</button>
       </div>`).join('');
   } else openSec.classList.remove('show');
 
@@ -1692,8 +1707,8 @@ async function renderEntries(){
           </div>
         </div>
         <div class="card-actions">
-          <button class="edit-btn" ontouchend="editTrade(${t.id});event.preventDefault();" onclick="editTrade(${t.id})">✏ EDIT</button>
-          <button class="delete-btn" ontouchend="deleteTrade(${t.id});event.preventDefault();" onclick="deleteTrade(${t.id})">🗑</button>
+          <button class="edit-btn" data-id="${t.id}" data-action="edit">✏ EDIT</button>
+          <button class="delete-btn" data-id="${t.id}" data-action="delete">🗑</button>
         </div>
       </div>
       <div class="entry-meta">
@@ -1794,7 +1809,7 @@ function renderWeekly(){
         ${t.result==='OPEN'||t.status==='OPEN'?`<span class="badge badge-open">⚡ OPEN</span>`:t.result?`<span class="badge badge-${t.result.toLowerCase()}">${t.result}</span>`:''}
         ${t.pnl?`<span style="color:${parseFloat(t.pnl)>=0?'var(--green)':'var(--red)'}">$${parseFloat(t.pnl)>=0?'+':''}${t.pnl}</span>`:''}
         ${t.preEmotion?`<span>${emoEmoji[t.preEmotion]||''} ${t.preEmotion}</span>`:''}
-        <button class="edit-btn" onclick="editTrade(${t.id})" style="padding:2px 8px;font-size:10px">✏ Edit</button>
+        <button class="edit-btn" data-id="${t.id}" data-action="edit" style="padding:6px 10px;font-size:10px">✏ Edit</button>
       </div>`).join(''):`<div style="font-size:10px;color:var(--muted);padding-top:5px;font-style:italic">No trades</div>`}
     </div>`;
   }).join('');
