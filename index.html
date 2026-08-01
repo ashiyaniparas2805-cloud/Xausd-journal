@@ -836,8 +836,8 @@ function setupButtonDelegation() {
     const id = parseInt(btn.getAttribute('data-id'));
     const action = btn.getAttribute('data-action');
     if (!id || isNaN(id)) return;
-    if (action === 'edit') editTrade(id);
-    if (action === 'delete') deleteTrade(id);
+    if (action === 'edit' && window.editTrade) window.editTrade(id);
+    if (action === 'delete' && window.deleteTrade) window.deleteTrade(id);
   }, true);
 }
 
@@ -1883,6 +1883,11 @@ function renderStats(){
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2600);}
 
 // App ready — init handled by DOMContentLoaded above
+// Expose key functions to window for event delegation
+window.editTrade = editTrade;
+window.deleteTrade = deleteTrade;
+window.saveTrade = saveTrade;
+window.cancelEdit = cancelEdit;
 </script>
 </body>
 </html>
